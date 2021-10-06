@@ -1,6 +1,5 @@
 package com.mflq.crawler.models.bean;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class CrawlerRequest {

@@ -1,5 +1,7 @@
 package com.mflq.crawler.services;
 
+import java.io.File;
+
 import com.mflq.crawler.models.bean.CrawlerRequest;
 import com.mflq.crawler.thread.ThReadCrawler;
 
@@ -13,14 +15,27 @@ public class ThReadCrawlerService {
 	public void startProcess(CrawlerRequest crawlerRequest) throws Exception {
 		String crawlStorageFolder = "temporal";
 
-		int numberOfCrawlers = 7;
+		int numberOfCrawlers = 1;
+
+		// ubicacion en la que se guardaran las imagenes
+		File storageFolder = new File("temporal/imagenes");
+
+		/*
+		 * valida si existe la ubicacion para guardar el crawler y las imagenes la
+		 * imagenes si no existe crea la carpeta
+		 */
+		if (!storageFolder.exists()) {
+			storageFolder.mkdirs();
+		}
 
 		CrawlConfig config = new CrawlConfig();
 		config.setCrawlStorageFolder(crawlStorageFolder);
 
 		config.setIncludeBinaryContentInCrawling(true);
-
-		// Instantiate the controller for this crawl.
+		config.setMaxDownloadSize(100000000);
+//		config.setMaxDownloadSize(1000000000);
+		
+		// Crea una instancia del controlador para este rastreo.
 		PageFetcher pageFetcher = new PageFetcher(config);
 		RobotstxtConfig robotstxtConfig = new RobotstxtConfig();
 		RobotstxtServer robotstxtServer = new RobotstxtServer(robotstxtConfig, pageFetcher);
@@ -35,11 +50,12 @@ public class ThReadCrawlerService {
 		}
 
 		// La fábrica que crea instancias de rastreadores.
-		CrawlController.WebCrawlerFactory<ThReadCrawler> factory = () -> new ThReadCrawler(crawlerRequest);
+		CrawlController.WebCrawlerFactory<ThReadCrawler> factory = () -> new ThReadCrawler(storageFolder,
+				crawlerRequest);
 
 		// Inicie el rastreo. Esta es una operación de bloqueo, lo que significa que su
-		// código
-		// llegará a la línea después de esto solo cuando finalice el rastreo.
+		// código llegará a la línea después de esto solo cuando finalice el rastreo.
 		controller.start(factory, numberOfCrawlers);
+		System.out.println("Finalizado");
 	}
 }

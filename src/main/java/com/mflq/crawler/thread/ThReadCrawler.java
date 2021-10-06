@@ -2,7 +2,6 @@ package com.mflq.crawler.thread;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -10,7 +9,8 @@ import java.util.regex.Pattern;
 import com.google.common.io.Files;
 import com.mflq.crawler.models.bean.CrawlerRequest;
 
-import edu.uci.ics.crawler4j.crawler.*;
+import edu.uci.ics.crawler4j.crawler.Page;
+import edu.uci.ics.crawler4j.crawler.WebCrawler;
 import edu.uci.ics.crawler4j.parser.BinaryParseData;
 import edu.uci.ics.crawler4j.parser.HtmlParseData;
 import edu.uci.ics.crawler4j.url.WebURL;
@@ -24,19 +24,20 @@ public class ThReadCrawler extends WebCrawler {
 	 * Creemos nuestro rastreador ampliando WebCrawler en nuestra clase de
 	 * rastreador y definiendo un patrón para excluir ciertos tipos de archivos:
 	 */
-	private static Pattern FILTERS;
+	private Pattern FILTERS;
 
 	/* Ficheros de imagen que si se deben encontrar */
-	private static final Pattern imgPatterns = Pattern.compile(".*(\\.(bmp|gif|jpe?g|png|tiff?))$");
+	private static final Pattern imgPatterns = Pattern.compile(".*(\\.(bmp|gif|jpe?g|jpg|mp4|png|tiff?))$");
 
 	/* ruta en la que se guardaran las imagenes */
-	private final File storageFolder = new File("temporal/imagenes");
+	private final File storageFolder;
 
 	/*
 	 * Contructor que inicializa el objeto que contiene las url, los dominios que se
 	 * buscaran, los ficheros que se exluiran y los que se buscaran
 	 */
-	public ThReadCrawler(CrawlerRequest crawlerRequest) {
+	public ThReadCrawler(File storageFolder, CrawlerRequest crawlerRequest) {
+		this.storageFolder = storageFolder;
 		this.crawlerRequest = crawlerRequest;
 
 		String filtro = ".*(\\.(";
@@ -50,10 +51,7 @@ public class ThReadCrawler extends WebCrawler {
 
 			}
 			filtro += extencion + separador;
-
-			System.out.println(contador);
 			contador++;
-			System.out.println(extencion);
 		}
 
 		this.FILTERS = Pattern.compile(filtro);
@@ -72,30 +70,20 @@ public class ThReadCrawler extends WebCrawler {
 	@Override
 	public boolean shouldVisit(Page referringPage, WebURL url) {
 		String href = url.getURL().toLowerCase();
-		// return !FILTERS.matcher(href).matches() &&
-		// href.startsWith("https://www.kinesdelmundo.com");
-
 		if (FILTERS.matcher(href).matches()) {
 			return false;
 		}
 
-		/* retorna true si es un tipo de imagen */
 		if (imgPatterns.matcher(href).matches()) {
 			return true;
 		}
 
-		/*
-		 * Con un for each recorrecomos el arreglo de url para validar si coincide con
-		 * el dominio
-		 */
-		for (String crawlDomain : crawlerRequest.getDomainsFilter()) {
-			if (href.startsWith(crawlDomain)) {
+		for (String domain : crawlerRequest.getDomainsFilter()) {
+			if (href.startsWith(domain)) {
 				return true;
 			}
 		}
-
 		return false;
-
 	}
 
 	/*
@@ -106,19 +94,28 @@ public class ThReadCrawler extends WebCrawler {
 	public void visit(Page page) {
 		String url = page.getWebURL().getURL();
 		System.out.println(url);
-		if (page.getParseData() instanceof HtmlParseData) {
-			HtmlParseData htmlParseData = (HtmlParseData) page.getParseData();
-			String text = htmlParseData.getText();
-			String html = htmlParseData.getHtml();
-			Set<WebURL> links = htmlParseData.getOutgoingUrls();
-
-//			System.out.println("Text length: " + text);
-//			System.out.println("Html length: " + html.length());
-			System.out.println("Number of outgoing links: " + links);
-		}
+		System.out.println("tamaño imagen: " + page.getContentData().length);
 
 		// Solo estamos interesados ​​en procesar imágenes
-		if (!imgPatterns.matcher(url).matches() || !((page.getParseData() instanceof BinaryParseData))) {
+//		if (!imgPatterns.matcher(url).matches() || !((page.getParseData() instanceof BinaryParseData))) {
+//			return;
+//		}
+
+		/*
+		 * Si la extencion del archivo no es de tipo imagen o video o audio (de los
+		 * formatos permitidos y definidos en imgPatterns), entonces retoran, es decir
+		 * si es un html entonces retorna, y si no es de tipo imagen o audio o video
+		 * tambien retorna
+		 */
+		if (!imgPatterns.matcher(url).matches() && !(page.getParseData() instanceof BinaryParseData)) {
+			return;
+		}
+
+		/*
+		 * En caso de que sea imagen, video, o audio entonces valida si el peso del
+		 * archivo no sobrepasa lo permitido, para guardar
+		 */
+		if (page.getContentData().length > 100000000) {
 			return;
 		}
 
